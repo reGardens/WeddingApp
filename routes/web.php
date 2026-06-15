@@ -10,9 +10,9 @@ use Illuminate\Support\Facades\Route;
 |--------------------------------------------------------------------------
 */
 
-// Root redirect to CMS
+// Root redirect to Dashboard
 Route::get('/', function () {
-    return redirect('/cms');
+    return redirect('/cms/dashboard');
 });
 
 // Public Invitation Page (loads the Vue SPA)
@@ -71,6 +71,11 @@ Route::middleware('auth')->group(function () {
     // Dashboard (accessible to all — data is filtered server-side by role)
     Route::get('/cms/dashboard', [\App\Http\Controllers\Admin\AdminDashboardController::class, 'index'])->name('cms.dashboard');
     Route::get('/cms/templates', [\App\Http\Controllers\Admin\TemplateController::class, 'index'])->name('cms.templates.index');
+
+    // /cms root redirects to dashboard
+    Route::get('/cms', function () {
+        return redirect('/cms/dashboard');
+    });
 });
 
 // Authenticated CMS Wildcard Route (loads the Vue SPA for CMS)

@@ -8,11 +8,15 @@ const InvitationLayout = () => import('../Pages/Landing/invitation/layouts/Invit
 const routes = [
   {
     path: '/',
-    redirect: '/cms'
+    redirect: '/cms/dashboard'
   },
-  // Wedding Selector (no slug required)
+  // Wedding Selector (accessible via /cms/weddings)
   {
     path: '/cms',
+    redirect: '/cms/dashboard'
+  },
+  {
+    path: '/cms/weddings',
     name: 'cms-selector',
     component: () => import('../Pages/Cms/views/WeddingSelectorView.vue')
   },

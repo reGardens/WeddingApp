@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed } from "vue";
+import { ref, computed, onMounted, onUnmounted } from "vue";
 import { Link, usePage, router } from "@inertiajs/vue3";
 import IconComponent from "@/Components/IconComponent/IconComponent.vue";
 import Sidebar from "@/Components/Cms/Sidebar.vue";
@@ -16,6 +16,13 @@ const userRole = computed(() => user.value?.roles?.[0] || "user");
 
 const sidebarOpen = ref(false);
 const profileOpen = ref(false);
+const profileDropdownRef = ref(null);
+const csrfToken = computed(
+    () =>
+        document
+            .querySelector('meta[name="csrf-token"]')
+            ?.getAttribute("content") || "",
+);
 
 function toggleSidebar() {
     sidebarOpen.value = !sidebarOpen.value;
@@ -33,8 +40,47 @@ function closeProfile() {
     profileOpen.value = false;
 }
 
+// Close dropdown when clicking outside
+function handleClickOutside(event) {
+    if (
+        profileOpen.value &&
+        profileDropdownRef.value &&
+        !profileDropdownRef.value.contains(event.target)
+    ) {
+        profileOpen.value = false;
+    }
+}
+
+onMounted(() => {
+    document.addEventListener("click", handleClickOutside);
+});
+
+onUnmounted(() => {
+    document.removeEventListener("click", handleClickOutside);
+});
+
 function logout() {
-    router.post("/logout");
+    profileOpen.value = false;
+    const csrfToken = document
+        .querySelector('meta[name="csrf-token"]')
+        ?.getAttribute("content");
+
+    fetch("/logout", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "X-CSRF-TOKEN": csrfToken || "",
+            "X-Requested-With": "XMLHttpRequest",
+            Accept: "text/html",
+        },
+        credentials: "same-origin",
+    })
+        .then(() => {
+            window.location.href = "/login";
+        })
+        .catch(() => {
+            window.location.href = "/login";
+        });
 }
 </script>
 
@@ -47,13 +93,6 @@ function logout() {
             @click="closeSidebar"
         />
 
-        <!-- Profile dropdown overlay (close on click outside) -->
-        <div
-            v-if="profileOpen"
-            class="fixed inset-0 z-40"
-            @click="closeProfile"
-        />
-
         <!-- Sidebar -->
         <aside
             :class="[
@@ -61,7 +100,9 @@ function logout() {
                 sidebarOpen ? 'translate-x-0' : '-translate-x-full',
             ]"
         >
-            <div class="flex h-16 items-center border-b border-border px-4 shrink-0">
+            <div
+                class="flex h-16 items-center border-b border-border px-4 shrink-0"
+            >
                 <Link
                     href="/cms/dashboard"
                     class="flex items-center gap-2.5 font-bold"
@@ -85,10 +126,10 @@ function logout() {
         </aside>
 
         <!-- Main content wrapper -->
-        <div class="lg:pl-[260px] flex flex-col flex-1 min-h-0 overflow-hidden">
+        <div class="lg:pl-[260px] flex flex-col flex-1 min-h-0">
             <!-- Top navbar -->
             <header
-                class="sticky top-0 z-30 flex h-16 items-center gap-2 border-b border-border bg-card/80 backdrop-blur px-4 lg:px-6"
+                class="sticky top-0 z-30 flex h-16 items-center gap-2 border-b border-border bg-card/80 backdrop-blur px-4 lg:px-6 overflow-visible"
             >
                 <!-- Mobile hamburger -->
                 <button
@@ -130,7 +171,7 @@ function logout() {
                 <div class="h-6 w-px bg-border mx-1 hidden sm:block" />
 
                 <!-- Profile Dropdown -->
-                <div class="relative">
+                <div class="relative" ref="profileDropdownRef">
                     <button
                         @click="toggleProfile"
                         class="flex items-center gap-2 rounded-lg px-3 py-2 hover:bg-accent transition-colors"
@@ -187,19 +228,29 @@ function logout() {
                             </div>
 
                             <!-- Logout -->
-                            <button
-                                @click="logout"
-                                class="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-destructive hover:bg-destructive/10 transition-colors"
-                            >
-                                <IconComponent name="Logout" class="h-4 w-4" />
-                                {{ t("common.logout") }}
-                            </button>
+                            <form method="POST" action="/logout">
+                                <input
+                                    type="hidden"
+                                    name="_token"
+                                    :value="csrfToken"
+                                />
+                                <button
+                                    type="submit"
+                                    class="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-destructive hover:bg-destructive/10 transition-colors cursor-pointer"
+                                >
+                                    <IconComponent
+                                        name="Logout"
+                                        class="h-4 w-4"
+                                    />
+                                    {{ t("common.logout") }}
+                                </button>
+                            </form>
                         </div>
                     </Transition>
                 </div>
             </header>
 
-            <main class="flex-1 min-h-0 overflow-auto">
+            <main class="flex-1 min-h-0 overflow-auto overflow-x-hidden">
                 <slot />
             </main>
         </div>
